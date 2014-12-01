@@ -412,8 +412,12 @@ namespace Mono.Cecil {
 
 			var nested_names = type_info.nested_names;
 			if (!nested_names.IsNullOrEmpty ()) {
-				for (int i = 0; i < nested_names.Length; i++)
-					typedef = typedef.GetNestedType (nested_names [i]);
+				for (int i = 0; i < nested_names.Length; i++) {
+					var td = typedef.GetNestedType (nested_names [i]);
+					if (td == null)
+						throw new InvalidOperationException (string.Format ("Can't not find the nested type '{0}' in '{1}", nested_names [i], typedef));
+					typedef = td;
+				}
 			}
 
 			type = typedef;
