@@ -1,34 +1,17 @@
 //
-// ModuleDefinition.cs
-//
 // Author:
 //   Jb Evain (jbevain@gmail.com)
 //
-// Copyright (c) 2008 - 2011 Jb Evain
+// Copyright (c) 2008 - 2015 Jb Evain
+// Copyright (c) 2008 - 2011 Novell, Inc.
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Licensed under the MIT/X11 license.
 //
 
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using SR = System.Reflection;
 
 using Mono.Cecil.Cil;
@@ -131,7 +114,7 @@ namespace Mono.Cecil {
 		public ModuleParameters ()
 		{
 			this.kind = ModuleKind.Dll;
-			this.runtime = GetCurrentRuntime ();
+			this.Runtime = GetCurrentRuntime ();
 			this.architecture = TargetArchitecture.I386;
 		}
 
@@ -220,6 +203,7 @@ namespace Mono.Cecil {
 		readonly MetadataReader reader;
 		readonly string fq_name;
 
+		internal string runtime_version;
 		internal ModuleKind kind;
 		TargetRuntime runtime;
 		TargetArchitecture architecture;
@@ -252,7 +236,18 @@ namespace Mono.Cecil {
 
 		public TargetRuntime Runtime {
 			get { return runtime; }
-			set { runtime = value; }
+			set {
+				runtime = value;
+				runtime_version = runtime.RuntimeVersionString ();
+			}
+		}
+
+		public string RuntimeVersion {
+			get { return runtime_version; }
+			set {
+				runtime_version = value;
+				runtime = runtime_version.ParseRuntime ();
+			}
 		}
 
 		public TargetArchitecture Architecture {
@@ -301,7 +296,12 @@ namespace Mono.Cecil {
 
 #if !READ_ONLY
 		internal MetadataImporter MetadataImporter {
-			get { return importer ?? (importer = new MetadataImporter (this)); }
+			get {
+				if (importer == null)
+					Interlocked.CompareExchange (ref importer, new MetadataImporter (this), null);
+
+				return importer;
+			}
 		}
 
 		internal void SetMetadataImporter (MetadataImporter importer)
@@ -318,15 +318,30 @@ namespace Mono.Cecil {
 #endif
 
 		public IAssemblyResolver AssemblyResolver {
-			get { return assembly_resolver ?? (assembly_resolver = new DefaultAssemblyResolver ()); }
+			get {
+				if (assembly_resolver == null)
+					Interlocked.CompareExchange (ref assembly_resolver, new DefaultAssemblyResolver (), null);
+
+				return assembly_resolver;
+			}
 		}
 
 		public IMetadataResolver MetadataResolver {
-			get { return metadata_resolver ?? (metadata_resolver = new MetadataResolver (this.AssemblyResolver)); }
+			get {
+				if (metadata_resolver == null)
+					Interlocked.CompareExchange (ref metadata_resolver, new MetadataResolver (this.AssemblyResolver), null);
+
+				return metadata_resolver;
+			}
 		}
 
 		public TypeSystem TypeSystem {
-			get { return type_system ?? (type_system = TypeSystem.CreateTypeSystem (this)); }
+			get {
+				if (type_system == null)
+					Interlocked.CompareExchange (ref type_system, TypeSystem.CreateTypeSystem (this), null);
+
+				return type_system;
+			}
 		}
 
 		public bool HasAssemblyReferences {
@@ -344,7 +359,7 @@ namespace Mono.Cecil {
 					return references;
 
 				if (HasImage)
-					return references = Read (this, (_, reader) => reader.ReadAssemblyReferences ());
+					return Read (ref references, this, (_, reader) => reader.ReadAssemblyReferences ());
 
 				return references = new Collection<AssemblyNameReference> ();
 			}
@@ -365,7 +380,7 @@ namespace Mono.Cecil {
 					return modules;
 
 				if (HasImage)
-					return modules = Read (this, (_, reader) => reader.ReadModuleReferences ());
+					return Read (ref modules, this, (_, reader) => reader.ReadModuleReferences ());
 
 				return modules = new Collection<ModuleReference> ();
 			}
@@ -389,7 +404,7 @@ namespace Mono.Cecil {
 					return resources;
 
 				if (HasImage)
-					return resources = Read (this, (_, reader) => reader.ReadResources ());
+					return Read (ref resources, this, (_, reader) => reader.ReadResources ());
 
 				return resources = new Collection<Resource> ();
 			}
@@ -405,7 +420,7 @@ namespace Mono.Cecil {
 		}
 
 		public Collection<CustomAttribute> CustomAttributes {
-			get { return custom_attributes ?? (custom_attributes = this.GetCustomAttributes (this)); }
+			get { return custom_attributes ?? (this.GetCustomAttributes (ref custom_attributes, this)); }
 		}
 
 		public bool HasTypes {
@@ -423,7 +438,7 @@ namespace Mono.Cecil {
 					return types;
 
 				if (HasImage)
-					return types = Read (this, (_, reader) => reader.ReadTypes ());
+					return Read (ref types, this, (_, reader) => reader.ReadTypes ());
 
 				return types = new TypeDefinitionCollection (this);
 			}
@@ -444,7 +459,7 @@ namespace Mono.Cecil {
 					return exported_types;
 
 				if (HasImage)
-					return exported_types = Read (this, (_, reader) => reader.ReadExportedTypes ());
+					return Read (ref exported_types, this, (_, reader) => reader.ReadExportedTypes ());
 
 				return exported_types = new Collection<ExportedType> ();
 			}
@@ -456,7 +471,7 @@ namespace Mono.Cecil {
 					return entry_point;
 
 				if (HasImage)
-					return entry_point = Read (this, (_, reader) => reader.ReadEntryPoint ());
+					return Read (ref entry_point, this, (_, reader) => reader.ReadEntryPoint ());
 
 				return entry_point = null;
 			}
@@ -474,7 +489,7 @@ namespace Mono.Cecil {
 		{
 			this.Image = image;
 			this.kind = image.Kind;
-			this.runtime = image.Runtime;
+			this.RuntimeVersion = image.RuntimeVersion;
 			this.architecture = image.Architecture;
 			this.attributes = image.Attributes;
 			this.characteristics = image.Characteristics;
@@ -779,17 +794,43 @@ namespace Mono.Cecil {
 			return Read (token, (t, reader) => reader.LookupToken (t));
 		}
 
+		readonly object module_lock = new object();
+
+		internal object SyncRoot {
+			get { return module_lock; }
+		}
+
 		internal TRet Read<TItem, TRet> (TItem item, Func<TItem, MetadataReader, TRet> read)
 		{
-			var position = reader.position;
-			var context = reader.context;
+			lock (module_lock) {
+				var position = reader.position;
+				var context = reader.context;
 
-			var ret = read (item, reader);
+				var ret = read (item, reader);
 
-			reader.position = position;
-			reader.context = context;
+				reader.position = position;
+				reader.context = context;
 
-			return ret;
+				return ret;
+			}
+		}
+
+		internal TRet Read<TItem, TRet> (ref TRet variable, TItem item, Func<TItem, MetadataReader, TRet> read) where TRet : class
+		{
+			lock (module_lock) {
+				if (variable != null)
+					return variable;
+
+				var position = reader.position;
+				var context = reader.context;
+
+				var ret = read (item, reader);
+
+				reader.position = position;
+				reader.context = context;
+
+				return variable = ret;
+			}
 		}
 
 		public bool HasDebugHeader {
@@ -831,7 +872,7 @@ namespace Mono.Cecil {
 			var module = new ModuleDefinition {
 				Name = name,
 				kind = parameters.Kind,
-				runtime = parameters.Runtime,
+				Runtime = parameters.Runtime,
 				architecture = parameters.Architecture,
 				mvid = Guid.NewGuid (),
 				Attributes = ModuleAttributes.ILOnly,
@@ -1012,6 +1053,21 @@ namespace Mono.Cecil {
 			case '4':
 			default:
 				return TargetRuntime.Net_4_0;
+			}
+		}
+
+		public static string RuntimeVersionString (this TargetRuntime runtime)
+		{
+			switch (runtime) {
+			case TargetRuntime.Net_1_0:
+				return "v1.0.3705";
+			case TargetRuntime.Net_1_1:
+				return "v1.1.4322";
+			case TargetRuntime.Net_2_0:
+				return "v2.0.50727";
+			case TargetRuntime.Net_4_0:
+			default:
+				return "v4.0.30319";
 			}
 		}
 	}
