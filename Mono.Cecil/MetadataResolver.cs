@@ -14,7 +14,7 @@ using Mono.Collections.Generic;
 
 namespace Mono.Cecil {
 
-	public interface IAssemblyResolver {
+	public interface IAssemblyResolver : IDisposable {
 		AssemblyDefinition Resolve (AssemblyNameReference name);
 		AssemblyDefinition Resolve (AssemblyNameReference name, ReaderParameters parameters);
 
@@ -28,10 +28,10 @@ namespace Mono.Cecil {
 		MethodDefinition Resolve (MethodReference method);
 	}
 
-#if !SILVERLIGHT && !CF
+#if !PCL && !NET_CORE
 	[Serializable]
 #endif
-	public class ResolutionException : Exception {
+	public sealed class ResolutionException : Exception {
 
 		readonly MemberReference member;
 
@@ -62,8 +62,8 @@ namespace Mono.Cecil {
 			this.member = member;
 		}
 
-#if !SILVERLIGHT && !CF
-		protected ResolutionException (
+#if !PCL && !NET_CORE
+		ResolutionException (
 			System.Runtime.Serialization.SerializationInfo info,
 			System.Runtime.Serialization.StreamingContext context)
 			: base (info, context)
@@ -258,6 +258,12 @@ namespace Mono.Cecil {
 				if (!AreSame (method.ReturnType, reference.ReturnType))
 					continue;
 
+				if (method.IsVarArg () != reference.IsVarArg ())
+					continue;
+
+				if (method.IsVarArg () && IsVarArgCallTo (method, reference))
+					return method;
+
 				if (method.HasParameters != reference.HasParameters)
 					continue;
 
@@ -285,6 +291,21 @@ namespace Mono.Cecil {
 
 			for (int i = 0; i < count; i++)
 				if (!AreSame (a [i].ParameterType, b [i].ParameterType))
+					return false;
+
+			return true;
+		}
+
+		static bool IsVarArgCallTo (MethodDefinition method, MethodReference reference)
+		{
+			if (method.Parameters.Count >= reference.Parameters.Count)
+				return false;
+
+			if (reference.GetSentinelPosition () != method.Parameters.Count)
+				return false;
+
+			for (int i = 0; i < method.Parameters.Count; i++)
+				if (!AreSame (method.Parameters [i].ParameterType, reference.Parameters [i].ParameterType))
 					return false;
 
 			return true;

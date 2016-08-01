@@ -87,17 +87,7 @@ namespace Mono.Cecil {
 
 		static bool ParseInt32 (string value, out int result)
 		{
-#if CF
-			try {
-				result = int.Parse (value);
-				return true;
-			} catch {
-				result = 0;
-				return false;
-			}
-#else
 			return int.TryParse (value, out result);
-#endif
 		}
 
 		static void TryAddArity (string name, ref int arity)
@@ -154,13 +144,7 @@ namespace Mono.Cecil {
 
 		static void Add<T> (ref T [] array, T item)
 		{
-			if (array == null) {
-				array = new [] { item };
-				return;
-			}
-
-			array = array.Resize (array.Length + 1);
-			array [array.Length - 1] = item;
+			array = array.Add (item);
 		}
 
 		int [] ParseSpecs ()
@@ -368,22 +352,14 @@ namespace Mono.Cecil {
 		static IMetadataScope GetMetadataScope (ModuleDefinition module, Type type_info)
 		{
 			if (string.IsNullOrEmpty (type_info.assembly))
-				return module.TypeSystem.Corlib;
+				return module.TypeSystem.CoreLibrary;
 
-			return MatchReference (module, AssemblyNameReference.Parse (type_info.assembly));
-		}
+			AssemblyNameReference match;
+			var reference = AssemblyNameReference.Parse (type_info.assembly);
 
-		static AssemblyNameReference MatchReference (ModuleDefinition module, AssemblyNameReference pattern)
-		{
-			var references = module.AssemblyReferences;
-
-			for (int i = 0; i < references.Count; i++) {
-				var reference = references [i];
-				if (reference.FullName == pattern.FullName)
-					return reference;
-			}
-
-			return pattern;
+			return module.TryGetAssemblyNameReference (reference, out match)
+				? match
+				: reference;
 		}
 
 		static bool TryGetDefinition (ModuleDefinition module, Type type_info, out TypeReference type)
@@ -399,10 +375,11 @@ namespace Mono.Cecil {
 			var nested_names = type_info.nested_names;
 			if (!nested_names.IsNullOrEmpty ()) {
 				for (int i = 0; i < nested_names.Length; i++) {
-					var td = typedef.GetNestedType (nested_names [i]);
-					if (td == null)
-						throw new InvalidOperationException (string.Format ("Can't not find the nested type '{0}' in '{1}", nested_names [i], typedef));
-					typedef = td;
+					var nested_type = typedef.GetNestedType (nested_names [i]);
+					if (nested_type == null)
+						return false;
+
+					typedef = nested_type;
 				}
 			}
 

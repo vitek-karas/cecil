@@ -35,14 +35,19 @@ namespace Mono.Cecil {
 
 		public static T [] Resize<T> (this T [] self, int length)
 		{
-#if !CF
 			Array.Resize (ref self, length);
-#else
-			var copy = new T [length];
-			Array.Copy (self, copy, self.Length);
-			self = copy;
-#endif
+			return self;
+		}
 
+		public static T [] Add<T> (this T [] self, T item)
+		{
+			if (self == null) {
+				self = new [] { item };
+				return self;
+			}
+
+			self = self.Resize (self.Length + 1);
+			self [self.Length - 1] = item;
 			return self;
 		}
 	}

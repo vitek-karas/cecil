@@ -8,6 +8,8 @@
 // Licensed under the MIT/X11 license.
 //
 
+#if !PCL && !NET_CORE
+
 using System;
 using System.Collections.Generic;
 
@@ -48,5 +50,17 @@ namespace Mono.Cecil {
 
 			cache [name] = assembly;
 		}
+
+		protected override void Dispose (bool disposing)
+		{
+			foreach (var assembly in cache.Values)
+				assembly.Dispose ();
+
+			cache.Clear ();
+
+			base.Dispose (disposing);
+		}
 	}
 }
+
+#endif
