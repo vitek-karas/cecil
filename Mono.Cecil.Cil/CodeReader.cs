@@ -169,10 +169,10 @@ namespace Mono.Cecil.Cil {
 
 			if (!scope.variables.IsNullOrEmpty ()) {
 				for (int i = 0; i < scope.variables.Count; i++) {
-					var variable = scope.variables [i];
-					var variable_index = GetVariable (variable.Index);
-					if (variable_index != null)
-						variable.index = new VariableIndex (variable_index);
+					var variable_info = scope.variables [i];
+					var variable = GetVariable (variable_info.Index);
+					if (variable != null)
+						variable_info.index = new VariableIndex (variable);
 				}
 			}
 
