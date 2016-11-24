@@ -159,20 +159,17 @@ namespace Mono.Cecil.Cil {
 
 		void ReadScope (ScopeDebugInformation scope)
 		{
-			var start_instruction = GetInstruction (scope.Start.Offset);
-			if (start_instruction != null)
-				scope.Start = new InstructionOffset (start_instruction);
+			scope.Start = new InstructionOffset (GetInstruction (scope.Start.Offset));
 
 			var end_instruction = GetInstruction (scope.End.Offset);
-			if (end_instruction != null)
-				scope.End = new InstructionOffset (end_instruction);
+			scope.End = end_instruction == null
+				? new InstructionOffset ()
+				: new InstructionOffset (end_instruction);
 
 			if (!scope.variables.IsNullOrEmpty ()) {
 				for (int i = 0; i < scope.variables.Count; i++) {
 					var variable = scope.variables [i];
-					var variable_index = GetVariable (variable.Index);
-					if (variable_index != null)
-						variable.index = new VariableIndex (variable_index);
+					variable.index = new VariableIndex (GetVariable (variable.Index));
 				}
 			}
 
