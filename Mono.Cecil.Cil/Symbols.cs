@@ -729,9 +729,10 @@ namespace Mono.Cecil.Cil {
 			if (kind == SymbolKind.PortablePdb)
 				return new PortablePdbReaderProvider ();
 
-			var type = GetSymbolType (kind, GetSymbolTypeName (kind, "ReaderProvider"));
+			var providerName = GetSymbolTypeName (kind, "ReaderProvider");
+			var type = GetSymbolType (kind, providerName);
 			if (type == null)
-				return null;
+				throw new TypeLoadException ("Could not find symbol provider type " + providerName);
 
 			return (ISymbolReaderProvider) Activator.CreateInstance (type);
 		}
@@ -739,7 +740,7 @@ namespace Mono.Cecil.Cil {
 		static string GetSymbolTypeName (SymbolKind kind, string name)
 		{
 			var ns = GetSymbolNamespace (kind);
-			return typeof (SymbolProvider).Assembly.GetName ().Name + "." + ns + "." + kind + name;
+			return typeof (SymbolProvider).GetAssembly ().GetName ().Name + "." + ns + "." + kind + name;
 		}
 
 		static string GetSymbolNamespace (SymbolKind kind)
