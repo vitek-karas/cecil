@@ -33,13 +33,15 @@ namespace Mono.Cecil {
 		internal IMetadataResolver metadata_resolver;
 #if !READ_ONLY
 		internal IMetadataImporterProvider metadata_importer_provider;
-#if !PCL && !NET_CORE
+#if !PCL
 		internal IReflectionImporterProvider reflection_importer_provider;
 #endif
 #endif
 		Stream symbol_stream;
 		ISymbolReaderProvider symbol_reader_provider;
+#if !PCL
 		bool read_symbols;
+#endif
 		bool projections;
 		bool in_memory;
 		bool read_write;
@@ -70,7 +72,7 @@ namespace Mono.Cecil {
 			set { metadata_importer_provider = value; }
 		}
 
-#if !PCL && !NET_CORE
+#if !PCL
 		public IReflectionImporterProvider ReflectionImporterProvider {
 			get { return reflection_importer_provider; }
 			set { reflection_importer_provider = value; }
@@ -128,7 +130,7 @@ namespace Mono.Cecil {
 		IMetadataResolver metadata_resolver;
 #if !READ_ONLY
 		IMetadataImporterProvider metadata_importer_provider;
-#if !PCL && !NET_CORE
+#if !PCL
 		IReflectionImporterProvider reflection_importer_provider;
 #endif
 #endif
@@ -169,7 +171,7 @@ namespace Mono.Cecil {
 			set { metadata_importer_provider = value; }
 		}
 
-#if !PCL && !NET_CORE
+#if !PCL
 		public IReflectionImporterProvider ReflectionImporterProvider {
 			get { return reflection_importer_provider; }
 			set { reflection_importer_provider = value; }
@@ -189,7 +191,7 @@ namespace Mono.Cecil {
 #if !PCL && !NET_CORE
 			return typeof (object).Assembly.ImageRuntimeVersion.ParseRuntime ();
 #else
-			var corlib_name = AssemblyNameReference.Parse (typeof (object).GetAssembly ().FullName);
+			var corlib_name = AssemblyNameReference.Parse (typeof (object).Assembly ().FullName);
 			var corlib_version = corlib_name.Version;
 
 			switch (corlib_version.Major) {
@@ -297,7 +299,7 @@ namespace Mono.Cecil {
 		MethodDefinition entry_point;
 
 #if !READ_ONLY
-#if !PCL && !NET_CORE
+#if !PCL
 		internal IReflectionImporter reflection_importer;
 #endif
 		internal IMetadataImporter metadata_importer;
@@ -399,7 +401,7 @@ namespace Mono.Cecil {
 		}
 
 #if !READ_ONLY
-#if !PCL && !NET_CORE
+#if !PCL
 		internal IReflectionImporter ReflectionImporter {
 			get {
 				if (reflection_importer == null)
@@ -793,12 +795,7 @@ namespace Mono.Cecil {
 				throw new ArgumentException ();
 		}
 
-		static ImportGenericContext GenericContextFor (IGenericParameterProvider context)
-		{
-			return context != null ? new ImportGenericContext (context) : default (ImportGenericContext);
-		}
-
-#if !PCL && !NET_CORE
+#if !PCL
 
 		[Obsolete ("Use ImportReference", error: false)]
 		public TypeReference Import (Type type)
@@ -1067,7 +1064,7 @@ namespace Mono.Cecil {
 #if !READ_ONLY
 			if (parameters.MetadataImporterProvider != null)
 				module.metadata_importer = parameters.MetadataImporterProvider.GetMetadataImporter (module);
-#if !PCL && !NET_CORE
+#if !PCL
 			if (parameters.ReflectionImporterProvider != null)
 				module.reflection_importer = parameters.ReflectionImporterProvider.GetReflectionImporter (module);
 #endif
@@ -1189,7 +1186,7 @@ namespace Mono.Cecil {
 		public void Write (string fileName, WriterParameters parameters)
 		{
 			Mixin.CheckParameters (parameters);
-			var file = GetFileStream (fileName, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+			var file = GetFileStream (fileName, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
 			ModuleWriter.WriteModuleTo (this, Disposable.Owned (file), parameters);
 		}
 #endif
@@ -1341,7 +1338,7 @@ namespace Mono.Cecil {
 
 			var assembly_name = module.Assembly.Name.Name;
 
-			if (assembly_name != "mscorlib" && assembly_name != "System.Runtime")
+			if (assembly_name != "mscorlib" && assembly_name != "System.Runtime" && assembly_name != "System.Private.CoreLib")
 				return false;
 
 			if (module.HasImage && module.Read (module, (m, reader) => reader.image.GetTableLength (Table.AssemblyRef) > 0))
