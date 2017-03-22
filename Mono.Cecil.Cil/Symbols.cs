@@ -422,7 +422,7 @@ namespace Mono.Cecil.Cil {
 		}
 	}
 
-	public interface ICustomDebugInformationProvider : IMetadataTokenProvider {
+	interface ICustomDebugInformationProvider : IMetadataTokenProvider {
 		bool HasCustomDebugInformations { get; }
 		Collection<CustomDebugInformation> CustomDebugInformations { get; }
 	}
@@ -514,12 +514,6 @@ namespace Mono.Cecil.Cil {
 		{
 			this.catch_handler = new InstructionOffset (catchHandler);
 		}
-
-		public AsyncMethodBodyDebugInformation ()
-			: base (KindIdentifier)
-		{
-			this.catch_handler = new InstructionOffset (-1);
-		}
 	}
 
 	public sealed class StateMachineScopeDebugInformation : CustomDebugInformation {
@@ -554,7 +548,7 @@ namespace Mono.Cecil.Cil {
 			: base (KindIdentifier)
 		{
 			this.start = new InstructionOffset (start);
-			this.end = end != null ? new InstructionOffset (end) : new InstructionOffset ();
+			this.end = new InstructionOffset (end);
 		}
 	}
 

@@ -40,7 +40,7 @@ namespace Mono.Cecil.Pdb {
 		void DefineField_Placeholder ();
 		void DefineGlobalVariable_Placeholder ();
 		void Close ();
-		void SetSymAttribute (uint parent, string name, uint data, IntPtr signature);
+		void SetSymAttribute_Placeholder ();
 		void OpenNamespace ([In, MarshalAs (UnmanagedType.LPWStr)] string name);
 		void CloseNamespace ();
 		void UsingNamespace ([In, MarshalAs (UnmanagedType.LPWStr)] string fullName);
@@ -78,13 +78,6 @@ namespace Mono.Cecil.Pdb {
 			[In] int addr3,
 			[In] int startOffset,
 			[In] int endOffset);
-
-		void DefineGlobalVariable2_Placeholder ();
-
-		void DefineConstant2 (
-			[In, MarshalAs (UnmanagedType.LPWStr)] string name,
-			[In, MarshalAs (UnmanagedType.Struct)] object variant,
-			[In] SymbolToken sigToken);
 	}
 }
 

@@ -2058,11 +2058,6 @@ namespace Mono.Cecil {
 			return GetBlobIndex (GetMethodSignature (call_site));
 		}
 
-		public uint GetConstantTypeBlobIndex (TypeReference constant_type)
-		{
-			return GetBlobIndex (GetConstantTypeSignature (constant_type));
-		}
-
 		SignatureWriter GetVariablesSignature (Collection<VariableDefinition> variables)
 		{
 			var signature = CreateSignatureWriter ();
@@ -2070,14 +2065,6 @@ namespace Mono.Cecil {
 			signature.WriteCompressedUInt32 ((uint) variables.Count);
 			for (int i = 0; i < variables.Count; i++)
 				signature.WriteTypeSignature (variables [i].VariableType);
-			return signature;
-		}
-
-		SignatureWriter GetConstantTypeSignature (TypeReference constant_type)
-		{
-			var signature = CreateSignatureWriter ();
-			signature.WriteByte (0x6);
-			signature.WriteTypeSignature (constant_type);
 			return signature;
 		}
 

@@ -71,16 +71,6 @@ namespace Mono.Cecil.Pdb
 			m_writer.DefineLocalVariable2 (name, (int)attributes, sigToken, (int)addrKind, addr1, addr2, addr3, startOffset, endOffset);
 		}
 
-		public void DefineConstant2 (string name, object value, SymbolToken sigToken)
-		{
-			if (value == null) {
-				m_writer.DefineConstant2 (name, 0, sigToken);
-				return;
-			}
-
-			m_writer.DefineConstant2 (name, value, sigToken);
-		}
-
 		public void Close ()
 		{
 			m_writer.Close ();
@@ -154,13 +144,6 @@ namespace Mono.Cecil.Pdb
 		public void UsingNamespace (string fullName)
 		{
 			m_writer.UsingNamespace (fullName);
-		}
-
-		public void DefineCustomMetadata (string name, byte [] metadata)
-		{
-			var handle = GCHandle.Alloc (metadata, GCHandleType.Pinned);
-			m_writer.SetSymAttribute (0, name, (uint) metadata.Length, handle.AddrOfPinnedObject ());
-			handle.Free ();
 		}
 	}
 }

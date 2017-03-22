@@ -436,6 +436,13 @@ namespace Mono.Cecil.Cil {
 			}
 		}
 
+		void Align (int align)
+		{
+			align--;
+			var position = Position;
+			Advance (((position + align) & ~align) - position);
+		}
+
 		public MetadataToken ReadToken ()
 		{
 			return new MetadataToken (ReadUInt32 ());
