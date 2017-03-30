@@ -112,6 +112,8 @@ namespace Mono.Cecil {
 
 			var writer = ImageWriter.CreateWriter (module, metadata, stream);
 
+			stream.value.SetLength (0);
+
 			writer.WriteImage ();
 
 			if (metadata.symbol_writer != null)
