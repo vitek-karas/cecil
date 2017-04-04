@@ -2152,6 +2152,7 @@ namespace Mono.Cecil {
 			case ElementType.SzArray:
 			case ElementType.Class:
 			case ElementType.Object:
+			case ElementType.None:
 			case ElementType.Var:
 			case ElementType.MVar:
 				signature.WriteInt32 (0);
