@@ -403,7 +403,7 @@ namespace Mono.Cecil {
 			}
 		}
 
-		internal void SetMetadataImporter (MetadataImporter importer)
+		internal void SetMetadataImporter (IMetadataImporter importer)
 		{
 			if (this.metadata_importer != null)
 				throw new InvalidOperationException ();
