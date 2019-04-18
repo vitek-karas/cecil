@@ -225,8 +225,6 @@ namespace Mono.Cecil {
 			get { return key_pair; }
 			set { key_pair = value; }
 		}
-
-		public bool DeterministicGuid { get; set; }
 	}
 
 	public sealed class ModuleDefinition : ModuleReference, ICustomAttributeProvider, ICustomDebugInformationProvider, IDisposable {
