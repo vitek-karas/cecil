@@ -260,7 +260,7 @@ namespace Mono.Cecil.Cil {
 
 			var scope = GetLocalScope ();
 			if (scope != null)
-				UpdateLocalScope (scope, startOffset, item.GetSize (), instructionRemoved: null);
+				UpdateLocalScope (scope, startOffset, item.GetSize (), null, instructionRemoved: null);
 		}
 
 		protected override void OnSet (Instruction item, int index)
@@ -276,7 +276,7 @@ namespace Mono.Cecil.Cil {
 			var scope = GetLocalScope ();
 			if (scope != null) {
 				var sizeOfCurrent = current.GetSize ();
-				UpdateLocalScope (scope, current.Offset + sizeOfCurrent, item.GetSize () - sizeOfCurrent, current);
+				UpdateLocalScope (scope, current.Offset + sizeOfCurrent, item.GetSize () - sizeOfCurrent, null, current);
 			}
 		}
 
@@ -295,7 +295,7 @@ namespace Mono.Cecil.Cil {
 			var scope = GetLocalScope ();
 			if (scope != null) {
 				var size = item.GetSize ();
-				UpdateLocalScope (scope, item.Offset + size, -size, item);
+				UpdateLocalScope (scope, item.Offset + size, -size, null, item);
 			}
 
 			item.previous = null;
@@ -326,7 +326,7 @@ namespace Mono.Cecil.Cil {
 			return debug_info.Scope;
 		}
 
-		static void UpdateLocalScope (ScopeDebugInformation scope, int startFromOffset, int offset, Instruction instructionRemoved)
+		static void UpdateLocalScope (ScopeDebugInformation scope, int startFromOffset, int offset, ScopeDebugInformation parentScope, Instruction instructionRemoved)
 		{
 			// For both start and enf offsets on the scope:
 			// * If the offset is resolved (points to instruction by reference)  only update it if the instruction it points to is being removed.
@@ -334,20 +334,39 @@ namespace Mono.Cecil.Cil {
 			// * If the offset is not resolved (stores the instruction offset number itself)
 			//   update the number accordingly to keep it pointing to the correct instruction (by offset).
 
-			if ((!scope.Start.IsResolved && scope.Start.Offset >= startFromOffset) || 
+			if ((!scope.Start.IsResolved && scope.Start.Offset >= startFromOffset) ||
 				(instructionRemoved != null && scope.Start.ResolvedInstruction == instructionRemoved))
-				scope.Start = new InstructionOffset (scope.Start.Offset + offset);
+				scope.Start = new InstructionOffset (FitOffsetToScope (scope.Start.Offset + offset, parentScope));
 
 			// For end offset only update it if it's not the special sentinel value "EndOfMethod"; that should remain as-is.
-			if (!scope.End.IsEndOfMethod && 
+			if (!scope.End.IsEndOfMethod &&
 				((!scope.End.IsResolved && scope.End.Offset >= startFromOffset) ||
-				 (instructionRemoved != null && scope.End.ResolvedInstruction == instructionRemoved)))
-				scope.End = new InstructionOffset (scope.End.Offset + offset);
+				 (instructionRemoved != null && scope.End.ResolvedInstruction == instructionRemoved))) {
+				int newEndOffset = FitOffsetToScope (scope.End.Offset + offset, parentScope);
+				if (newEndOffset < scope.Start.Offset)
+					newEndOffset = scope.Start.Offset;
+
+				scope.End = new InstructionOffset (newEndOffset);
+			}
 
 			if (scope.HasScopes) {
 				foreach (var subScope in scope.Scopes)
-					UpdateLocalScope (subScope, startFromOffset, offset, instructionRemoved);
+					UpdateLocalScope (subScope, startFromOffset, offset, scope, instructionRemoved);
 			}
+		}
+
+		static int FitOffsetToScope (int offset, ScopeDebugInformation scope)
+		{
+			if (scope == null)
+				return offset;
+
+			if (scope.Start.Offset > offset)
+				offset = scope.Start.Offset;
+
+			if (!scope.End.IsEndOfMethod && offset > scope.End.Offset)
+				offset = scope.End.Offset;
+
+			return offset;
 		}
 	}
 }

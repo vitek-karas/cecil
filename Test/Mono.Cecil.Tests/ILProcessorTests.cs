@@ -79,8 +79,8 @@ namespace Mono.Cecil.Tests {
 			AssertOpCodeSequence (new [] { OpCodes.Ldloc_0, OpCodes.Nop, OpCodes.Ldloc_1, OpCodes.Ldloc_2 }, method);
 			var wholeBodyScope = VerifyWholeBodyScope (method);
 			AssertLocalScope (wholeBodyScope.Scopes [0], 0, 2);
-			AssertLocalScope (wholeBodyScope.Scopes [1], 2, 3);
-			AssertLocalScope (wholeBodyScope.Scopes [2], 3, null);
+			AssertLocalScope (wholeBodyScope.Scopes [1], 2, null);
+			AssertLocalScope (wholeBodyScope.Scopes [1].Scopes [0], 2, 3);
 		}
 
 		[Test]
@@ -102,14 +102,41 @@ namespace Mono.Cecil.Tests {
 
 			// Replace with larger instruction
 			var instruction = il.Create (OpCodes.Ldstr, "test");
-			instruction.Offset = method.Instructions [1].Offset;
+			//instruction.Offset = method.Instructions [1].Offset;
 			il.Replace (1, instruction);
 
 			AssertOpCodeSequence (new [] { OpCodes.Ldloc_0, OpCodes.Ldstr, OpCodes.Ldloc_2 }, method);
 			var wholeBodyScope = VerifyWholeBodyScope (method);
 			AssertLocalScope (wholeBodyScope.Scopes [0], 0, 1);
-			AssertLocalScope (wholeBodyScope.Scopes [1], 1, 6); // size of the new instruction is 5 bytes
-			AssertLocalScope (wholeBodyScope.Scopes [2], 6, null);
+			AssertLocalScope (wholeBodyScope.Scopes [1], 1, null);
+			AssertLocalScope (wholeBodyScope.Scopes [1].Scopes [0], 1, 6); // size of the new instruction is 5 bytes
+		}
+
+		[Test]
+		public void EditBodyWithLocalScopes ()
+		{
+			var method = CreateTestMethodWithLocalScopes ();
+			var il = method.GetILProcessor ();
+
+			// Replace with larger instruction
+			var instruction = il.Create (OpCodes.Ldstr, "test");
+			il.Replace (1, instruction);
+
+			// Add a new instruction
+			instruction = il.Create (OpCodes.Nop);
+			il.InsertAfter (2, instruction);
+			method.Method.DebugInformation.Scope.Scopes [1].Scopes.Add (new ScopeDebugInformation (
+				method.Instructions [2],
+				method.Instructions [3]));
+
+			// Remove it now
+			il.Remove (instruction);
+
+			AssertOpCodeSequence (new [] { OpCodes.Ldloc_0, OpCodes.Ldstr, OpCodes.Ldloc_2 }, method);
+			var wholeBodyScope = VerifyWholeBodyScope (method);
+			//AssertLocalScope (wholeBodyScope.Scopes [0], 0, 1);
+			//AssertLocalScope (wholeBodyScope.Scopes [1], 1, null);
+			//AssertLocalScope (wholeBodyScope.Scopes [1].Scopes [0], 1, 6); // size of the new instruction is 5 bytes
 		}
 
 		[Test]
@@ -194,16 +221,16 @@ namespace Mono.Cecil.Tests {
 			instruction = methodBody.Instructions [1];
 			var innerScopeMiddle = new ScopeDebugInformation () {
 				Start = new InstructionOffset (size),
-				End = new InstructionOffset (size + instruction.GetSize ())
+				End = new InstructionOffset ()
 			};
 			size += instruction.GetSize ();
 			wholeBodyScope.Scopes.Add (innerScopeMiddle);
 
-			var innerScopeEnd = new ScopeDebugInformation () {
-				Start = new InstructionOffset (size),
-				End = new InstructionOffset ()
+			var innerInnerScope = new ScopeDebugInformation () {
+				Start = new InstructionOffset (innerScopeMiddle.Start.Offset),
+				End = new InstructionOffset (size)
 			};
-			wholeBodyScope.Scopes.Add (innerScopeEnd);
+			innerScopeMiddle.Scopes.Add (innerInnerScope);
 
 			debug_info.Scope = wholeBodyScope;
 			return methodBody;
