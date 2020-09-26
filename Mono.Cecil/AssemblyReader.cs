@@ -419,7 +419,7 @@ namespace Mono.Cecil {
 			for (int i = 0; i < methods.Count; i++) {
 				var method = methods [i];
 
-				if (method.HasBody && method.token.RID != 0 && method.debug_info == null)
+				if (method.HasBody && method.token.RID != 0 && (method.debug_info == null || !method.debug_info.HasSequencePoints))
 					method.debug_info = symbol_reader.Read (method);
 			}
 		}
@@ -2326,10 +2326,6 @@ namespace Mono.Cecil {
 			}
 
 			member.token = new MetadataToken (TokenType.MemberRef, rid);
-
-			if (module.IsWindowsMetadata ())
-				WindowsRuntimeProjections.Project (member);
-
 			return member;
 		}
 
