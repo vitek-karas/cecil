@@ -770,5 +770,32 @@ class Program
 			Assert.AreEqual (9, debug_info.SequencePoints.Count);
 		}
 
+		[Test]
+		public void LoadPdbOnDemand_DoesntOverwriteCustomizedDebugInfo ()
+		{
+			var assembly = File.ReadAllBytes (GetAssemblyResourcePath ("Microsoft.AspNetCore.Components.dll"));
+			var pdb = File.ReadAllBytes (GetAssemblyResourcePath ("Microsoft.AspNetCore.Components.pdb"));
+
+			var module = ModuleDefinition.ReadModule (new MemoryStream (assembly), new ReaderParameters (ReadingMode.Immediate));
+
+			var type = module.GetType ("Microsoft.AspNetCore.Components.Rendering.ComponentState");
+			var main = type.GetMethod ("RenderIntoBatch");
+			var debug_info = main.DebugInformation;
+			var newBody = new MethodBody (main);
+			var il = newBody.GetILProcessor ();
+			il.Emit (OpCodes.Ret);
+			main.Body = newBody;
+			debug_info.SequencePoints.Clear ();
+			debug_info.Scope = null;
+
+			var pdbReaderProvider = new PdbReaderProvider ();
+			var symbolReader = pdbReaderProvider.GetSymbolReader (module, new MemoryStream (pdb));
+			module.ReadSymbols (symbolReader);
+			type = module.GetType ("Microsoft.AspNetCore.Components.Rendering.ComponentState");
+			main = type.GetMethod ("RenderIntoBatch");
+			debug_info = main.DebugInformation;
+			Assert.AreEqual (0, debug_info.SequencePoints.Count);
+			Assert.IsNull (debug_info.Scope);
+		}
 	}
 }
