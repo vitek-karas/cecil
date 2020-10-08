@@ -1354,6 +1354,12 @@ namespace Mono.Cecil {
 
 		MetadataToken GetTypeRefToken (TypeReference type)
 		{
+			MetadataToken ctoken;
+			if (module.CustomMetadataWriter != null) {
+				if (module.CustomMetadataWriter.CreateTypeRefToken (ref type, out ctoken))
+					return ctoken;
+			}
+
 			var projection = WindowsRuntimeProjections.RemoveProjection (type);
 
 			var row = CreateTypeRefRow (type);

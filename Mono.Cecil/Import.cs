@@ -486,7 +486,7 @@ namespace Mono.Cecil {
 			this.module = module;
 		}
 
-		TypeReference ImportType (TypeReference type, ImportGenericContext context)
+		internal virtual TypeReference ImportType (TypeReference type, ImportGenericContext context)
 		{
 			if (type.IsTypeSpecification ())
 				return ImportTypeSpecification (type, context);
